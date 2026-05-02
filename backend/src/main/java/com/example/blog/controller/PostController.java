@@ -28,10 +28,6 @@ public class PostController {
 
     /* ================= CREATE ================= */
 
-    /**
-     * Create a new post with optional media upload
-     * POST /api/posts
-     */
     @PreAuthorize("isAuthenticated()")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostDTO> createPost(
@@ -42,7 +38,7 @@ public class PostController {
         CreatePostRequest request = new CreatePostRequest();
         request.setTitle(title);
         request.setContent(content);
-        
+
         PostDTO created = postService.createPost(request, media);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
@@ -50,66 +46,49 @@ public class PostController {
     /* ================= READ ================= */
 
     /**
-     * Get all posts (public endpoint - useful for explore/discover)
-     * GET /api/posts
+     * GET /api/posts?page=0&size=20
+     * Returns a page of posts. Capped at 100 per request server-side.
      */
     @GetMapping
-    public ResponseEntity<List<PostDTO>> getAllPosts() {
-        List<PostDTO> posts = postService.getAllPosts();
-        return ResponseEntity.ok(posts);
+    public ResponseEntity<Page<PostDTO>> getAllPosts(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(postService.getAllPosts(page, size));
     }
 
-    /**
-     * Get a specific post by ID
-     * GET /api/posts/{id}
-     */
     @GetMapping("/{id}")
     public ResponseEntity<PostDTO> getPostById(@PathVariable @NonNull Long id) {
         PostDTO post = postService.getPostById(id);
+        // Hidden posts are only visible to admins
+        if (post.isHidden()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return ResponseEntity.ok(post);
     }
 
-    /**
-     * Get all posts by a specific user (for user's block page)
-     * GET /api/posts/user/{userId}
-     */
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<PostDTO>> getPostsByUser(@PathVariable @NonNull Long userId) {
-        List<PostDTO> posts = postService.getPostsByUserId(userId);
-        return ResponseEntity.ok(posts);
+        return ResponseEntity.ok(postService.getPostsByUserId(userId));
     }
 
-    /**
-     * Get feed for current authenticated user (posts from subscriptions)
-     * GET /api/posts/feed
-     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/feed")
     public ResponseEntity<List<PostDTO>> getFeed() {
-        List<PostDTO> feed = postService.getFeedForCurrentUser();
-        return ResponseEntity.ok(feed);
+        return ResponseEntity.ok(postService.getFeedForCurrentUser());
     }
 
-    /**
-     * Get feed with pagination
-     * GET /api/posts/feed/page?page=0&size=10
-     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/feed/page")
     public ResponseEntity<Page<PostDTO>> getFeedPaginated(
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        Page<PostDTO> feed = postService.getFeedForCurrentUser(page, size);
-        return ResponseEntity.ok(feed);
+        return ResponseEntity.ok(postService.getFeedForCurrentUser(page, size));
     }
 
     /* ================= UPDATE ================= */
 
-    /**
-     * Update a post (owner or admin only)
-     * PUT /api/posts/{id}
-     */
     @PreAuthorize("isAuthenticated()")
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostDTO> updatePost(
@@ -121,17 +100,12 @@ public class PostController {
         UpdatePostRequest request = new UpdatePostRequest();
         request.setTitle(title);
         request.setContent(content);
-        
-        PostDTO updated = postService.updatePost(id, request, media);
-        return ResponseEntity.ok(updated);
+
+        return ResponseEntity.ok(postService.updatePost(id, request, media));
     }
 
     /* ================= DELETE ================= */
 
-    /**
-     * Delete a post (owner or admin only)
-     * DELETE /api/posts/{id}
-     */
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(@PathVariable @NonNull Long id) {
@@ -139,16 +113,22 @@ public class PostController {
         return ResponseEntity.noContent().build();
     }
 
-    /* ================= ADMIN ENDPOINTS ================= */
-
-    /**
-     * Admin can delete any post
-     * DELETE /api/posts/{id}/admin
-     */
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}/admin")
     public ResponseEntity<Void> adminDeletePost(@PathVariable @NonNull Long id) {
         postService.deletePost(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/hide")
+    public ResponseEntity<PostDTO> hidePost(@PathVariable @NonNull Long id) {
+        return ResponseEntity.ok(postService.hidePost(id));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/unhide")
+    public ResponseEntity<PostDTO> unhidePost(@PathVariable @NonNull Long id) {
+        return ResponseEntity.ok(postService.unhidePost(id));
     }
 }

@@ -83,7 +83,7 @@ import { pick } from '../../services/typewriter.service';
                 @if (!editingBio) {
                   <button class="btn btn-sm" (click)="startEditBio()">EDIT PROFILE</button>
                 }
-                <a routerLink="/posts/new" class="btn btn-primary btn-sm">TRANSMIT</a>
+                <span routerLink="/posts/new" class="btn btn-primary btn-sm">TRANSMIT</span>
               } @else {
                 @if (isSubscribed !== null) {
                   <button class="btn btn-sm"

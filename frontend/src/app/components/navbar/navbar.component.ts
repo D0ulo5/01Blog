@@ -42,8 +42,8 @@ import { startWith, switchMap, catchError } from 'rxjs/operators';
             </a>
             <button class="nav-logout btn btn-sm" (click)="logout()">LOGOUT</button>
           } @else {
-            <a routerLink="/login"    class="btn btn-sm">LOGIN</a>
-            <a routerLink="/register" class="btn btn-primary btn-sm">REGISTER</a>
+            <span routerLink="/login"    class="btn btn-sm">LOGIN</span>
+            <span routerLink="/register" class="btn btn-primary btn-sm">REGISTER</span>
           }
         </div>
 

@@ -80,7 +80,7 @@ VALUES
 -- POSTS
 -- =========================
 
-INSERT INTO posts (user_id, title, content, media_url, media_type, created_at, updated_at)
+INSERT INTO posts (user_id, title, content, media_url, media_type, hidden, created_at, updated_at)
 VALUES
 -- Admin posts
 (1,
@@ -88,6 +88,7 @@ VALUES
  'Welcome to 01Blog! 🎉 This platform is designed to help you share your learning journey. Feel free to post about what you''re discovering, the challenges you''re facing, and the victories you''re celebrating. Let''s build a supportive community together!',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '7 days',
  NOW() - INTERVAL '7 days'),
 
@@ -97,6 +98,7 @@ VALUES
  'Just finished implementing JWT authentication in my Spring Boot app! The key is understanding the filter chain and how to properly validate tokens. Here are my key takeaways: 1) Always use environment variables for secrets, 2) Set reasonable expiration times, 3) Implement refresh tokens for better UX.',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '6 days',
  NOW() - INTERVAL '6 days'),
 
@@ -105,6 +107,7 @@ VALUES
  'Docker has completely changed my development workflow. No more "it works on my machine" problems! Here''s my Dockerfile for a Spring Boot app with multi-stage builds for smaller images.',
  'https://images.unsplash.com/photo-1605745341112-85968b19335b',
  'IMAGE',
+ false,
  NOW() - INTERVAL '4 days',
  NOW() - INTERVAL '4 days'),
 
@@ -113,6 +116,7 @@ VALUES
  'Finally understood the difference between @Service and @Component in Spring! While functionally they''re similar, using @Service makes your code more semantic and clearly indicates business logic layers. Clean architecture matters!',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '2 days',
  NOW() - INTERVAL '2 days'),
 
@@ -122,6 +126,7 @@ VALUES
  'Started learning Angular today and I''m impressed by how well TypeScript catches errors at compile time. Coming from vanilla JavaScript, this is a game-changer. The learning curve is steep but worth it!',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '5 days',
  NOW() - INTERVAL '5 days'),
 
@@ -130,6 +135,7 @@ VALUES
  'My documentation workflow: 1) Write code, 2) Add inline comments for complex logic, 3) Create README with setup instructions, 4) Add API documentation with examples. Good docs save so much time later!',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '3 days',
  NOW() - INTERVAL '3 days'),
 
@@ -138,6 +144,7 @@ VALUES
  'Just published my first technical blog post! Writing about what you learn is such a powerful way to solidify your understanding. Plus, it helps others who are on the same journey. Win-win! 📝',
  'https://images.unsplash.com/photo-1499750310107-5fef28a66643',
  'IMAGE',
+    false,
  NOW() - INTERVAL '1 day',
  NOW() - INTERVAL '1 day'),
 
@@ -147,6 +154,7 @@ VALUES
  'Design tip: Consistency > Creativity. Users don''t want to relearn your interface on every page. Stick to established patterns, use a design system, and only innovate where it truly adds value.',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '5 days',
  NOW() - INTERVAL '5 days'),
 
@@ -155,6 +163,7 @@ VALUES
  'Color theory for developers: Don''t just pick colors that look good together. Consider accessibility (WCAG contrast ratios), color blindness (use patterns in addition to colors), and cultural meanings. Design is about solving problems, not just making things pretty.',
  'https://images.unsplash.com/photo-1561070791-2526d30994b5',
  'IMAGE',
+ false,
  NOW() - INTERVAL '3 days',
  NOW() - INTERVAL '3 days'),
 
@@ -164,6 +173,7 @@ VALUES
  'Week 1 of my full-stack journey: HTML/CSS ✅, JavaScript basics ✅, Git fundamentals ✅. The amount I need to learn is overwhelming, but breaking it down into weekly goals helps. One step at a time!',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '4 days',
  NOW() - INTERVAL '4 days'),
 
@@ -172,6 +182,7 @@ VALUES
  'Had my first "aha!" moment with promises and async/await today. Finally clicked why we need them. The callback hell examples in tutorials make so much more sense now! 💡',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '2 days',
  NOW() - INTERVAL '2 days'),
 
@@ -180,6 +191,7 @@ VALUES
  'Built my first REST API today! It''s just a simple CRUD app for a todo list, but I''m so proud. All those HTTP methods finally make sense when you build something real.',
  'https://images.unsplash.com/photo-1516116216624-53e697fedbea',
  'IMAGE',
+  false,
  NOW() - INTERVAL '1 day',
  NOW() - INTERVAL '1 day'),
 
@@ -189,6 +201,7 @@ VALUES
  '🚀 AMAZING OPPORTUNITY 🚀 Get 10,000 followers INSTANTLY! Buy followers, likes, and comments at cheap-followers-scam.example.com! Limited time offer! Click now! 💰💰💰',
  NULL,
  NULL,
+ false,
  NOW() - INTERVAL '12 hours',
  NOW() - INTERVAL '12 hours');
 

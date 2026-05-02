@@ -46,7 +46,7 @@ import { ReportModalComponent } from '../report-modal/report-modal.component';
             }
             <div class="post-actions">
               @if (isOwner()) {
-                <a [routerLink]="['/posts', post.id, 'edit']" class="btn btn-sm">EDIT</a>
+                <span [routerLink]="['/posts', post.id, 'edit']" class="btn btn-sm">EDIT</span>
                 <button class="btn btn-sm btn-danger" (click)="deletePost()">DELETE</button>
               } @else {
                 <button class="btn btn-xs btn-warn" (click)="showReport = true">REPORT</button>

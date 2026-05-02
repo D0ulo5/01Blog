@@ -46,18 +46,18 @@ import { CommonModule } from '@angular/common';
 
           <div class="vid-bottom">
             <div class="vid-left">
-              <button class="video-btn" (click)="togglePlay()">
+              <h1 class="video-btn" (click)="togglePlay()">
                 {{ isPlaying ? 'PAUSE' : 'PLAY' }}
-              </button>
+              </h1>
               <span class="vid-time">{{ currentTimeStr }} / {{ durationStr }}</span>
             </div>
             <div class="vid-right">
-              <button class="video-btn" (click)="toggleMute()">
+              <h1 class="video-btn" (click)="toggleMute()">
                 {{ isMuted ? 'UNMUTE' : 'MUTE' }}
-              </button>
+              </h1>
               <input type="range" min="0" max="1" step="0.05"
                 [value]="volume" (input)="setVolume($event)" class="vol-slider" />
-              <button class="video-btn" (click)="toggleFullscreen()">FULL</button>
+              <h1 class="video-btn" (click)="toggleFullscreen()">FULL</h1>
             </div>
           </div>
         </div>

@@ -35,8 +35,8 @@ public class PostService {
     private final SubscriptionService subscriptionService;
 
     public PostService(
-            PostRepository postRepository, 
-            UserService userService, 
+            PostRepository postRepository,
+            UserService userService,
             UserSecurity userSecurity,
             FileStorageService fileStorageService,
             NotificationService notificationService,
@@ -52,11 +52,7 @@ public class PostService {
 
     /* ================= CREATE ================= */
 
-    /**
-     * Create a new post for the current authenticated user
-     */
     public PostDTO createPost(@NonNull CreatePostRequest request, MultipartFile media) {
-        // Get current user
         Long currentUserId = userSecurity.getCurrentUserId();
         if (currentUserId == null) {
             throw new ForbiddenException("You must be authenticated to create a post");
@@ -65,12 +61,10 @@ public class PostService {
         User user = userService.getUserById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Handle media upload
         if (media != null && !media.isEmpty()) {
             String mediaUrl = fileStorageService.storeFile(media);
             request.setMediaUrl(mediaUrl);
-            
-            // Determine media type from content type
+
             String contentType = media.getContentType();
             if (contentType != null) {
                 if (contentType.startsWith("image/")) {
@@ -81,12 +75,9 @@ public class PostService {
             }
         }
 
-        // Create post
         Post post = PostMapper.fromCreateRequest(request, user);
         Post savedPost = postRepository.save(post);
 
-
-        // Notify subscribers (REQUIRED BY SUBJECT)
         List<Long> subscriberIds = subscriptionService.getSubscriberIds(currentUserId);
         if (!subscriberIds.isEmpty()) {
             notificationService.createNotificationsForUsers(
@@ -103,50 +94,49 @@ public class PostService {
     /* ================= READ ================= */
 
     /**
-     * Get all posts (admin or public feed)
+     * Paginated list of all posts — avoids loading the entire table into memory.
+     * Default page size capped at 100 to prevent abuse.
      */
     @Transactional(readOnly = true)
-    public List<PostDTO> getAllPosts() {
+    public Page<PostDTO> getAllPosts(int page, int size) {
         Long currentUserId = userSecurity.getCurrentUserId();
-        return postRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
-                .stream()
-                .map(post -> PostMapper.toDTO(post, currentUserId))
-                .collect(Collectors.toList());
+        boolean isAdmin    = userSecurity.isAdmin();
+        int cappedSize     = Math.min(size, 100);
+        Pageable pageable  = PageRequest.of(page, cappedSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Post> posts = isAdmin
+                ? postRepository.findAll(pageable)
+                : postRepository.findByHiddenFalseOrderByCreatedAtDesc(pageable);
+
+        return posts.map(post -> PostMapper.toDTO(post, currentUserId));
     }
 
-    /**
-     * Get post by ID
-     */
     @Transactional(readOnly = true)
     public PostDTO getPostById(@NonNull Long id) {
         Long currentUserId = userSecurity.getCurrentUserId();
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post with ID " + id + " not found"));
-        
         return PostMapper.toDTO(post, currentUserId);
     }
 
-    /**
-     * Get all posts by a specific user (for user's block page)
-     */
     @Transactional(readOnly = true)
     public List<PostDTO> getPostsByUserId(@NonNull Long userId) {
         Long currentUserId = userSecurity.getCurrentUserId();
-        
-        // Verify user exists
+        boolean isAdmin    = userSecurity.isAdmin();
+
         if (!userService.getUserById(userId).isPresent()) {
             throw new ResourceNotFoundException("User with ID " + userId + " not found");
         }
 
-        return postRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
+        List<Post> posts = isAdmin
+                ? postRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                : postRepository.findByUserIdAndHiddenFalseOrderByCreatedAtDesc(userId);
+
+        return posts.stream()
                 .map(post -> PostMapper.toDTO(post, currentUserId))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get posts from users that the current user subscribes to (feed)
-     */
     @Transactional(readOnly = true)
     public List<PostDTO> getFeedForCurrentUser() {
         Long currentUserId = userSecurity.getCurrentUserId();
@@ -160,9 +150,6 @@ public class PostService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get feed with pagination
-     */
     @Transactional(readOnly = true)
     public Page<PostDTO> getFeedForCurrentUser(int page, int size) {
         Long currentUserId = userSecurity.getCurrentUserId();
@@ -171,35 +158,28 @@ public class PostService {
         }
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Post> posts = postRepository.findPostsBySubscriptions(currentUserId, pageable);
-        
-        return posts.map(post -> PostMapper.toDTO(post, currentUserId));
+        return postRepository.findPostsBySubscriptions(currentUserId, pageable)
+                .map(post -> PostMapper.toDTO(post, currentUserId));
     }
 
     /* ================= UPDATE ================= */
 
-    /**
-     * Update a post (only owner or admin)
-     */
     public PostDTO updatePost(@NonNull Long id, @NonNull UpdatePostRequest request, MultipartFile media) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post with ID " + id + " not found"));
 
-        // Check ownership
         if (!userSecurity.isOwnerOrAdmin(post.getUser().getId())) {
             throw new ForbiddenException("You don't have permission to update this post");
         }
 
-        // Handle media upload
         if (media != null && !media.isEmpty()) {
-            // Delete old media if exists
             if (post.getMediaUrl() != null) {
                 fileStorageService.deleteFile(post.getMediaUrl());
             }
-            
+
             String mediaUrl = fileStorageService.storeFile(media);
             request.setMediaUrl(mediaUrl);
-            
+
             String contentType = media.getContentType();
             if (contentType != null) {
                 if (contentType.startsWith("image/")) {
@@ -210,7 +190,6 @@ public class PostService {
             }
         }
 
-        // Update post
         PostMapper.updateFromRequest(post, request);
         Post updatedPost = postRepository.save(post);
 
@@ -218,21 +197,32 @@ public class PostService {
         return PostMapper.toDTO(updatedPost, currentUserId);
     }
 
+    /* ================= HIDE / UNHIDE (admin only) ================= */
+
+    public PostDTO hidePost(@NonNull Long id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post with ID " + id + " not found"));
+        post.setHidden(true);
+        return PostMapper.toDTO(postRepository.save(post), userSecurity.getCurrentUserId());
+    }
+
+    public PostDTO unhidePost(@NonNull Long id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post with ID " + id + " not found"));
+        post.setHidden(false);
+        return PostMapper.toDTO(postRepository.save(post), userSecurity.getCurrentUserId());
+    }
+
     /* ================= DELETE ================= */
 
-    /**
-     * Delete a post (only owner or admin)
-     */
     public void deletePost(@NonNull Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Post with ID " + id + " not found"));
 
-        // Check ownership
         if (!userSecurity.isOwnerOrAdmin(post.getUser().getId())) {
             throw new ForbiddenException("You don't have permission to delete this post");
         }
 
-        // Delete media file if exists
         if (post.getMediaUrl() != null) {
             fileStorageService.deleteFile(post.getMediaUrl());
         }
@@ -242,9 +232,6 @@ public class PostService {
 
     /* ================= UTILITY ================= */
 
-    /**
-     * Count posts by user
-     */
     @Transactional(readOnly = true)
     public long countPostsByUser(@NonNull Long userId) {
         return postRepository.countByUserId(userId);

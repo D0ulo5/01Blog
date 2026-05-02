@@ -106,19 +106,25 @@ type Tab = 'users' | 'posts' | 'reports';
 
           <div class="admin-table">
             <div class="table-head posts-cols">
-              <span>#</span><span>AUTHOR</span><span>TITLE</span><span>♥</span><span>#</span><span>DATE</span><span>ACTIONS</span>
+              <span>#</span><span>AUTHOR</span><span>TITLE</span><span>♥</span><span>#</span><span>DATE</span><span>VIS</span><span>ACTIONS</span>
             </div>
             @for (p of filteredPosts; track p.id) {
-              <div class="table-row posts-cols">
+              <div class="table-row posts-cols" [class.row-hidden]="p.hidden">
                 <span class="text-mono text-dim text-xs">#{{ p.id }}</span>
                 <span class="text-mono text-xs">{{ p.username }}</span>
                 <span class="text-mono text-sm cell-clip">{{ trunc(p.title, 48) }}</span>
                 <span class="text-mono text-dim text-xs">{{ p.likeCount }}</span>
                 <span class="text-mono text-dim text-xs">{{ p.commentCount }}</span>
                 <span class="text-mono text-dim text-xs">{{ fmtDate(p.createdAt) }}</span>
+                <span class="text-mono text-xs" [class.text-warn]="p.hidden" [class.text-bright]="!p.hidden">{{ p.hidden ? 'HIDDEN' : 'LIVE' }}</span>
                 <div class="row-actions">
-                  <a [routerLink]="['/posts', p.id]" class="btn btn-xs">VIEW</a>
-                  <button class="btn btn-xs btn-danger" (click)="adminDeletePost(p)">DELETE</button>
+                  <span [routerLink]="['/posts', p.id]" class="btn btn-xs">VIEW</span>
+                  @if (p.hidden) {
+                    <button type="button" class="btn btn-xs btn-primary" (click)="unhidePost(p)">UNHIDE</button>
+                  } @else {
+                    <button type="button" class="btn btn-xs btn-warn" (click)="hidePost(p)">HIDE</button>
+                  }
+                  <button type="button" class="btn btn-xs btn-danger" (click)="adminDeletePost(p)">DELETE</button>
                 </div>
               </div>
             }
@@ -217,11 +223,19 @@ type Tab = 'users' | 'posts' | 'reports';
     }
 
     .users-cols   { grid-template-columns: 40px 130px 170px 65px 65px 80px 1fr; }
-    .posts-cols   { grid-template-columns: 40px 100px 1fr 45px 45px 75px 110px; }
+    .posts-cols   { grid-template-columns: 40px 100px 1fr 45px 45px 75px 60px 140px; }
     .reports-cols { grid-template-columns: 40px 95px 95px 50px 1fr 80px 75px 130px; }
 
     .row-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; }
     .cell-clip   { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .row-hidden { opacity: 0.45; border-left: 2px solid var(--warn); }
+
+    .btn-warn {
+      border-color: var(--warn);
+      color: var(--warn);
+      &:hover { background: rgba(255,200,0,0.08); }
+    }
 
     .status-resolved  { opacity: 0.7; }
 
@@ -337,6 +351,20 @@ export class AdminComponent implements OnInit {
     if (!confirm(`DELETE POST #${p.id} BY ${p.username}?`)) return;
     this.postSvc.adminDeletePost(p.id).subscribe({
       next: () => { this.posts = this.posts.filter(x => x.id !== p.id); this.filterPosts(); this.ok('POST DELETED.'); },
+      error: e => this.setErr(e)
+    });
+  }
+
+  hidePost(p: PostDTO) {
+    this.postSvc.hidePost(p.id).subscribe({
+      next: updated => { this.posts = this.posts.map(x => x.id === p.id ? updated : x); this.filterPosts(); this.ok(`POST #${p.id} HIDDEN.`); },
+      error: e => this.setErr(e)
+    });
+  }
+
+  unhidePost(p: PostDTO) {
+    this.postSvc.unhidePost(p.id).subscribe({
+      next: updated => { this.posts = this.posts.map(x => x.id === p.id ? updated : x); this.filterPosts(); this.ok(`POST #${p.id} RESTORED.`); },
       error: e => this.setErr(e)
     });
   }

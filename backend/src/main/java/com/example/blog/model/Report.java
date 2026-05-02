@@ -1,6 +1,9 @@
 package com.example.blog.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.OffsetDateTime;
 
 @Entity
@@ -41,11 +44,14 @@ public class Report {
     )
     private User reportedUser;
 
+    // SET NULL so reports survive post deletion (e.g. when the post's author is deleted).
+    // The report remains as an admin record; the post reference just becomes null.
     @ManyToOne
     @JoinColumn(
         name = "reported_post_id",
         foreignKey = @ForeignKey(name = "fk_report_reported_post")
     )
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     private Post reportedPost;
 
     @Column(nullable = false, columnDefinition = "TEXT")
@@ -58,7 +64,6 @@ public class Report {
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
-    /* getters & setters unchanged */
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

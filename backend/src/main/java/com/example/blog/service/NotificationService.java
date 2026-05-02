@@ -8,16 +8,21 @@ import com.example.blog.model.Notification;
 import com.example.blog.model.User;
 import com.example.blog.repository.NotificationRepository;
 import com.example.blog.security.UserSecurity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class NotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
     private final NotificationRepository notificationRepository;
     private final UserService userService;
@@ -33,9 +38,6 @@ public class NotificationService {
         this.userSecurity = userSecurity;
     }
 
-    /**
-     * Create a notification for a user
-     */
     public void createNotification(
             @NonNull Long userId,
             @NonNull String message,
@@ -56,7 +58,8 @@ public class NotificationService {
     }
 
     /**
-     * Create notifications for multiple users (for post subscribers)
+     * Creates notifications for multiple users in a single batch write
+     * instead of one DB round-trip per user.
      */
     public void createNotificationsForUsers(
             @NonNull List<Long> userIds,
@@ -64,19 +67,28 @@ public class NotificationService {
             @NonNull Notification.NotificationType type,
             Long referenceId
     ) {
+        List<Notification> batch = new ArrayList<>(userIds.size());
+
         for (Long userId : userIds) {
-            try {
-                createNotification(userId, message, type, referenceId);
-            } catch (Exception e) {
-                // Log error but continue creating other notifications
-                System.err.println("Failed to create notification for user " + userId + ": " + e.getMessage());
-            }
+            userService.getUserById(userId).ifPresentOrElse(
+                user -> {
+                    Notification n = new Notification();
+                    n.setUser(user);
+                    n.setMessage(message);
+                    n.setType(type);
+                    n.setReferenceId(referenceId);
+                    n.setRead(false);
+                    batch.add(n);
+                },
+                () -> log.warn("Skipped notification — user {} not found", userId)
+            );
+        }
+
+        if (!batch.isEmpty()) {
+            notificationRepository.saveAll(batch);
         }
     }
 
-    /**
-     * Get all notifications for current user
-     */
     @Transactional(readOnly = true)
     public List<NotificationDTO> getNotifications() {
         Long currentUserId = userSecurity.getCurrentUserId();
@@ -90,9 +102,6 @@ public class NotificationService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get unread notifications for current user
-     */
     @Transactional(readOnly = true)
     public List<NotificationDTO> getUnreadNotifications() {
         Long currentUserId = userSecurity.getCurrentUserId();
@@ -106,14 +115,10 @@ public class NotificationService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Mark notification as read
-     */
     public void markAsRead(@NonNull Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
 
-        // Check ownership
         if (!userSecurity.isOwnerOrAdmin(notification.getUser().getId())) {
             throw new ForbiddenException("You don't have permission to update this notification");
         }
@@ -122,30 +127,21 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    /**
-     * Mark all notifications as read for current user
-     */
     public void markAllAsRead() {
         Long currentUserId = userSecurity.getCurrentUserId();
         if (currentUserId == null) {
             throw new ForbiddenException("You must be authenticated");
         }
 
-        List<Notification> unreadNotifications = 
-            notificationRepository.findByUserIdAndReadFalse(currentUserId);
-        
-        unreadNotifications.forEach(n -> n.setRead(true));
-        notificationRepository.saveAll(unreadNotifications);
+        List<Notification> unread = notificationRepository.findByUserIdAndReadFalse(currentUserId);
+        unread.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(unread);
     }
 
-    /**
-     * Delete notification
-     */
     public void deleteNotification(@NonNull Long notificationId) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
 
-        // Check ownership
         if (!userSecurity.isOwnerOrAdmin(notification.getUser().getId())) {
             throw new ForbiddenException("You don't have permission to delete this notification");
         }
@@ -153,9 +149,6 @@ public class NotificationService {
         notificationRepository.delete(notification);
     }
 
-    /**
-     * Delete all notifications for current user
-     */
     public void deleteAllNotifications() {
         Long currentUserId = userSecurity.getCurrentUserId();
         if (currentUserId == null) {
@@ -165,9 +158,6 @@ public class NotificationService {
         notificationRepository.deleteByUserId(currentUserId);
     }
 
-    /**
-     * Count unread notifications for current user
-     */
     @Transactional(readOnly = true)
     public long countUnread() {
         Long currentUserId = userSecurity.getCurrentUserId();

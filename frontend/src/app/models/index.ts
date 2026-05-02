@@ -32,6 +32,7 @@ export interface PostDTO {
   likeCount: number;
   commentCount: number;
   likedByCurrentUser: boolean;
+  hidden: boolean;
 }
 
 export interface CommentDTO {

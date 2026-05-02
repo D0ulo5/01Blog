@@ -28,4 +28,7 @@ public class PostDTO {
     
     // For authenticated users
     private boolean likedByCurrentUser;
+    
+    // Moderation
+    private boolean hidden;
 }

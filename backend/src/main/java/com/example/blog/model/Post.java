@@ -58,6 +58,9 @@ public class Post {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(nullable = false)
+    private boolean hidden = false;
+
     @OneToMany(
         mappedBy = "post",
         cascade = CascadeType.REMOVE,

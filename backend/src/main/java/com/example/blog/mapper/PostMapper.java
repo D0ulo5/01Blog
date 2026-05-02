@@ -30,7 +30,8 @@ public final class PostMapper {
         // Set engagement metrics
         dto.setLikeCount(post.getLikes() != null ? post.getLikes().size() : 0);
         dto.setCommentCount(post.getComments() != null ? post.getComments().size() : 0);
-        dto.setLikedByCurrentUser(false); // Will be set by service if needed
+        dto.setLikedByCurrentUser(false);
+        dto.setHidden(post.isHidden());
 
         return dto;
     }

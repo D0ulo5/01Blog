@@ -27,7 +27,7 @@ import { ReportModalComponent } from '../report-modal/report-modal.component';
         <!-- Owner-only actions stay top-right -->
         @if (isOwner()) {
           <div class="card-actions">
-            <a [routerLink]="['/posts', post.id, 'edit']" class="btn btn-xs">EDIT</a>
+            <span [routerLink]="['/posts', post.id, 'edit']" class="btn btn-xs">EDIT</span>
             <button class="btn btn-xs btn-danger" (click)="onDelete()">DELETE</button>
           </div>
         }

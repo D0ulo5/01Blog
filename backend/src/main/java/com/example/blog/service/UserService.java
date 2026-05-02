@@ -9,6 +9,7 @@ import com.example.blog.exception.ResourceNotFoundException;
 import com.example.blog.model.Role;
 import com.example.blog.model.User;
 import com.example.blog.repository.UserRepository;
+import com.example.blog.security.UserSecurity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,10 +24,12 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserSecurity userSecurity;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, UserSecurity userSecurity) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.userSecurity = userSecurity;
     }
 
     /* ================= READ OPERATIONS ================= */
@@ -149,6 +152,10 @@ public class UserService {
     public void deleteUser(@NonNull Long id) {
         if (!userRepository.existsById(id)) {
             throw new ResourceNotFoundException("User with ID " + id + " not found");
+        }
+        Long currentUserId = userSecurity.getCurrentUserId();
+        if (id.equals(currentUserId)) {
+            throw new ForbiddenException("You cannot delete your own account");
         }
         userRepository.deleteById(id);
     }

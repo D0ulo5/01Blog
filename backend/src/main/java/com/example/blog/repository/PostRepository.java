@@ -18,7 +18,12 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findByUserOrderByCreatedAtDesc(User user);
 
     /**
-     * Find all posts by user ID (for user's block page)
+     * Find visible (non-hidden) posts by user ID
+     */
+    List<Post> findByUserIdAndHiddenFalseOrderByCreatedAtDesc(Long userId);
+
+    /**
+     * Find all posts by user ID including hidden (admin use)
      */
     List<Post> findByUserIdOrderByCreatedAtDesc(Long userId);
 
@@ -28,28 +33,31 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     Page<Post> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     /**
-     * Find posts from users that the given user subscribes to (for feed)
-     * This gets posts from people the user follows
+     * All visible posts paginated (public explore)
+     */
+    Page<Post> findByHiddenFalseOrderByCreatedAtDesc(Pageable pageable);
+
+    /**
+     * Feed: visible posts from subscribed users
      */
     @Query("""
         SELECT p FROM Post p 
-        WHERE p.user.id IN (
+        WHERE p.hidden = false
+          AND p.user.id IN (
             SELECT s.target.id FROM Subscription s 
             WHERE s.subscriber.id = :userId
-        )
+          )
         ORDER BY p.createdAt DESC
     """)
     List<Post> findPostsBySubscriptions(@Param("userId") Long userId);
 
-    /**
-     * Find posts from subscriptions with pagination (for feed)
-     */
     @Query("""
         SELECT p FROM Post p 
-        WHERE p.user.id IN (
+        WHERE p.hidden = false
+          AND p.user.id IN (
             SELECT s.target.id FROM Subscription s 
             WHERE s.subscriber.id = :userId
-        )
+          )
         ORDER BY p.createdAt DESC
     """)
     Page<Post> findPostsBySubscriptions(@Param("userId") Long userId, Pageable pageable);
