@@ -2,17 +2,19 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { UserService } from '../../services/user.service';
 import { PostService } from '../../services/post.service';
 import { ReportService } from '../../services/report.service';
 import { UserAdminDTO, PostDTO, ReportDTO } from '../../models';
+import { CrtDialogService } from '../../services/crt-dialog.service';
 
 type Tab = 'users' | 'posts' | 'reports';
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, MatTooltipModule],
   template: `
     <div class="animate-in">
 
@@ -82,11 +84,11 @@ type Tab = 'users' | 'posts' | 'reports';
                 <span class="text-mono text-dim text-xs">{{ fmtDate(u.createdAt) }}</span>
                 <div class="row-actions">
                   @if (u.banned) {
-                    <button class="btn btn-xs btn-primary" (click)="unbanUser(u)">UNBAN</button>
+                    <button class="btn btn-xs btn-primary" (click)="unbanUser(u)" matTooltip="Lift ban" matTooltipPosition="above">UNBAN</button>
                   } @else {
-                    <button class="btn btn-xs btn-danger" (click)="banUser(u)">BAN</button>
+                    <button class="btn btn-xs btn-danger" (click)="banUser(u)" matTooltip="Ban user" matTooltipPosition="above">BAN</button>
                   }
-                  <button class="btn btn-xs btn-danger" (click)="deleteUser(u)">DELETE</button>
+                  <button class="btn btn-xs btn-danger" (click)="deleteUser(u)" matTooltip="Delete user and all data" matTooltipPosition="above">DELETE</button>
                 </div>
               </div>
             }
@@ -118,13 +120,13 @@ type Tab = 'users' | 'posts' | 'reports';
                 <span class="text-mono text-dim text-xs">{{ fmtDate(p.createdAt) }}</span>
                 <span class="text-mono text-xs" [class.text-warn]="p.hidden" [class.text-bright]="!p.hidden">{{ p.hidden ? 'HIDDEN' : 'LIVE' }}</span>
                 <div class="row-actions">
-                  <span [routerLink]="['/posts', p.id]" class="btn btn-xs">VIEW</span>
+                  <span [routerLink]="['/posts', p.id]" class="btn btn-xs" matTooltip="View post" matTooltipPosition="above">VIEW</span>
                   @if (p.hidden) {
-                    <button type="button" class="btn btn-xs btn-primary" (click)="unhidePost(p)">UNHIDE</button>
+                    <button type="button" class="btn btn-xs btn-primary" (click)="unhidePost(p)" matTooltip="Restore post visibility" matTooltipPosition="above">UNHIDE</button>
                   } @else {
-                    <button type="button" class="btn btn-xs btn-warn" (click)="hidePost(p)">HIDE</button>
+                    <button type="button" class="btn btn-xs btn-warn" (click)="hidePost(p)" matTooltip="Hide from public feed" matTooltipPosition="above">HIDE</button>
                   }
-                  <button type="button" class="btn btn-xs btn-danger" (click)="adminDeletePost(p)">DELETE</button>
+                  <button type="button" class="btn btn-xs btn-danger" (click)="adminDeletePost(p)" matTooltip="Permanently delete post" matTooltipPosition="above">DELETE</button>
                 </div>
               </div>
             }
@@ -249,6 +251,7 @@ export class AdminComponent implements OnInit {
   private userSvc   = inject(UserService);
   private postSvc   = inject(PostService);
   private reportSvc = inject(ReportService);
+  private dialog    = inject(CrtDialogService);
 
   tab: Tab = 'users';
 
@@ -326,64 +329,86 @@ export class AdminComponent implements OnInit {
   }
 
   banUser(u: UserAdminDTO) {
-    this.userSvc.banUser(u.id).subscribe({
-      next: () => { this.users = this.users.map(x => x.id === u.id ? { ...x, banned: true } : x); this.filterUsers(); this.ok(`BANNED ${u.username}.`); },
-      error: e => this.setErr(e)
+    this.dialog.confirm(`BAN USER "${u.username}"?`, 'BAN', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.userSvc.banUser(u.id).subscribe({
+        next: () => { this.users = this.users.map(x => x.id === u.id ? { ...x, banned: true } : x); this.filterUsers(); this.ok(`BANNED ${u.username}.`); },
+        error: e => this.setErr(e)
+      });
     });
   }
 
   unbanUser(u: UserAdminDTO) {
-    this.userSvc.unbanUser(u.id).subscribe({
-      next: () => { this.users = this.users.map(x => x.id === u.id ? { ...x, banned: false } : x); this.filterUsers(); this.ok(`UNBANNED ${u.username}.`); },
-      error: e => this.setErr(e)
+    this.dialog.confirm(`UNBAN USER "${u.username}"?`, 'UNBAN', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.userSvc.unbanUser(u.id).subscribe({
+        next: () => { this.users = this.users.map(x => x.id === u.id ? { ...x, banned: false } : x); this.filterUsers(); this.ok(`UNBANNED ${u.username}.`); },
+        error: e => this.setErr(e)
+      });
     });
   }
 
   deleteUser(u: UserAdminDTO) {
-    if (!confirm(`DELETE USER "${u.username}" AND ALL THEIR DATA?`)) return;
-    this.userSvc.deleteUser(u.id).subscribe({
-      next: () => { this.users = this.users.filter(x => x.id !== u.id); this.filterUsers(); this.ok(`DELETED ${u.username}.`); },
-      error: e => this.setErr(e)
+    this.dialog.confirm(`DELETE USER "${u.username}" AND ALL THEIR DATA?`, 'DELETE', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.userSvc.deleteUser(u.id).subscribe({
+        next: () => { this.users = this.users.filter(x => x.id !== u.id); this.filterUsers(); this.ok(`DELETED ${u.username}.`); },
+        error: e => this.setErr(e)
+      });
     });
   }
 
   adminDeletePost(p: PostDTO) {
-    if (!confirm(`DELETE POST #${p.id} BY ${p.username}?`)) return;
-    this.postSvc.adminDeletePost(p.id).subscribe({
-      next: () => { this.posts = this.posts.filter(x => x.id !== p.id); this.filterPosts(); this.ok('POST DELETED.'); },
-      error: e => this.setErr(e)
+    this.dialog.confirm(`DELETE POST #${p.id} BY ${p.username}?`, 'DELETE', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.postSvc.adminDeletePost(p.id).subscribe({
+        next: () => { this.posts = this.posts.filter(x => x.id !== p.id); this.filterPosts(); this.ok('POST DELETED.'); },
+        error: e => this.setErr(e)
+      });
     });
   }
 
   hidePost(p: PostDTO) {
-    this.postSvc.hidePost(p.id).subscribe({
-      next: updated => { this.posts = this.posts.map(x => x.id === p.id ? updated : x); this.filterPosts(); this.ok(`POST #${p.id} HIDDEN.`); },
-      error: e => this.setErr(e)
+    this.dialog.confirm(`HIDE POST #${p.id} FROM PUBLIC VIEW?`, 'HIDE', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.postSvc.hidePost(p.id).subscribe({
+        next: updated => { this.posts = this.posts.map(x => x.id === p.id ? updated : x); this.filterPosts(); this.ok(`POST #${p.id} HIDDEN.`); },
+        error: e => this.setErr(e)
+      });
     });
   }
 
   unhidePost(p: PostDTO) {
-    this.postSvc.unhidePost(p.id).subscribe({
-      next: updated => { this.posts = this.posts.map(x => x.id === p.id ? updated : x); this.filterPosts(); this.ok(`POST #${p.id} RESTORED.`); },
-      error: e => this.setErr(e)
+    this.dialog.confirm(`RESTORE POST #${p.id} TO PUBLIC VIEW?`, 'UNHIDE', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.postSvc.unhidePost(p.id).subscribe({
+        next: updated => { this.posts = this.posts.map(x => x.id === p.id ? updated : x); this.filterPosts(); this.ok(`POST #${p.id} VISIBLE.`); },
+        error: e => this.setErr(e)
+      });
     });
   }
 
   resolveReport(r: ReportDTO, status: string) {
-    this.reportSvc.updateStatus(r.id, status).subscribe({
-      next: updated => {
-        this.reports = this.reports.map(x => x.id === r.id ? updated : x);
-        this.setReportFilter(this.reportFilter);
-        this.ok(`REPORT #${r.id} > ${status}.`);
-      },
+    this.dialog.confirm(`RESOLVE REPORT #${r.id} AS "${status}"?`, 'RESOLVE', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.reportSvc.updateStatus(r.id, status).subscribe({
+        next: updated => {
+          this.reports = this.reports.map(x => x.id === r.id ? updated : x);
+          this.setReportFilter(this.reportFilter);
+          this.ok(`REPORT #${r.id} > ${status}.`);
+        },
       error: e => this.setErr(e)
+      });
     });
   }
 
   deleteReport(r: ReportDTO) {
-    this.reportSvc.deleteReport(r.id).subscribe({
-      next: () => { this.reports = this.reports.filter(x => x.id !== r.id); this.setReportFilter(this.reportFilter); this.ok('REPORT DELETED.'); },
-      error: e => this.setErr(e)
+    this.dialog.confirm(`DELETE REPORT #${r.id}?`, 'DELETE', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.reportSvc.deleteReport(r.id).subscribe({
+        next: () => { this.reports = this.reports.filter(x => x.id !== r.id); this.setReportFilter(this.reportFilter); this.ok('REPORT DELETED.'); },
+        error: e => this.setErr(e)
+      });
     });
   }
 

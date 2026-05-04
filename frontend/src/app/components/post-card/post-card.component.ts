@@ -1,16 +1,18 @@
 import { Component, Input, Output, EventEmitter, inject, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PostDTO } from '../../models';
 import { PostService } from '../../services/post.service';
 import { AuthService } from '../../services/auth.service';
 import { MediaPlayerComponent } from '../media-player/media-player.component';
 import { ReportModalComponent } from '../report-modal/report-modal.component';
+import { CrtDialogService } from '../../services/crt-dialog.service';
 
 @Component({
   selector: 'app-post-card',
   standalone: true,
-  imports: [RouterLink, CommonModule, MediaPlayerComponent, ReportModalComponent],
+  imports: [RouterLink, CommonModule, MatTooltipModule, MediaPlayerComponent, ReportModalComponent],
   template: `
     <article class="post-card">
 
@@ -27,8 +29,8 @@ import { ReportModalComponent } from '../report-modal/report-modal.component';
         <!-- Owner-only actions stay top-right -->
         @if (isOwner()) {
           <div class="card-actions">
-            <span [routerLink]="['/posts', post.id, 'edit']" class="btn btn-xs">EDIT</span>
-            <button class="btn btn-xs btn-danger" (click)="onDelete()">DELETE</button>
+            <span [routerLink]="['/posts', post.id, 'edit']" class="btn btn-xs" matTooltip="Edit post" matTooltipPosition="above">EDIT</span>
+            <button class="btn btn-xs btn-danger" (click)="onDelete()" matTooltip="Delete post" matTooltipPosition="above">DELETE</button>
           </div>
         }
       </header>
@@ -46,7 +48,8 @@ import { ReportModalComponent } from '../report-modal/report-modal.component';
       <footer class="card-foot">
         <div class="foot-left">
           <button class="like-btn" [class.liked]="post.likedByCurrentUser"
-            (click)="toggleLike()" [disabled]="!isLoggedIn()">
+            (click)="toggleLike()" [disabled]="!isLoggedIn()"
+            matTooltip="{{ post.likedByCurrentUser ? 'Unlike' : 'Like' }}" matTooltipPosition="above">
             <span class="heart">{{ post.likedByCurrentUser ? '♥' : '♡' }}</span>
             <span class="like-count">{{ post.likeCount }}</span>
           </button>
@@ -163,9 +166,13 @@ export class PostCardComponent {
     });
   }
 
+  private dialog  = inject(CrtDialogService);
+
   onDelete() {
-    if (!confirm('PERMANENTLY DELETE THIS POST?')) return;
-    this.postSvc.deletePost(this.post.id).subscribe({ next: () => this.deleted.emit(this.post.id) });
+    this.dialog.confirm('PERMANENTLY DELETE THIS POST?', 'DELETE', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.postSvc.deletePost(this.post.id).subscribe({ next: () => this.deleted.emit(this.post.id) });
+    });
   }
 
   fmtDate(iso: string) {

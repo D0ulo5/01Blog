@@ -1,13 +1,15 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { NotificationService } from '../../services/notification.service';
 import { NotificationDTO } from '../../models';
 import { pick } from '../../services/typewriter.service';
+import { CrtDialogService } from '../../services/crt-dialog.service';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatTooltipModule],
   template: `
     <div class="narrow animate-in">
 
@@ -20,7 +22,7 @@ import { pick } from '../../services/typewriter.service';
               <button class="btn btn-primary btn-sm" (click)="markAllRead()">MARK ALL READ</button>
             }
             @if (notifications.length > 0) {
-              <button class="btn btn-sm btn-danger" (click)="clearAll()">CLEAR ALL</button>
+              <button class="btn btn-sm btn-danger" (click)="clearAll()" matTooltip="Delete all notifications" matTooltipPosition="below">CLEAR ALL</button>
             }
           </div>
         </div>
@@ -94,7 +96,8 @@ import { pick } from '../../services/typewriter.service';
   `]
 })
 export class NotificationsComponent implements OnInit {
-  private svc = inject(NotificationService);
+  private svc    = inject(NotificationService);
+  private dialog = inject(CrtDialogService);
 
   notifications: NotificationDTO[] = [];
   loading    = true;
@@ -137,8 +140,10 @@ export class NotificationsComponent implements OnInit {
   }
 
   clearAll() {
-    if (!confirm('DELETE ALL NOTIFICATIONS?')) return;
-    this.svc.deleteAll().subscribe(() => { this.notifications = []; });
+    this.dialog.confirm('DELETE ALL NOTIFICATIONS?', 'DELETE', 'CANCEL').subscribe(ok => {
+      if (!ok) return;
+      this.svc.deleteAll().subscribe(() => { this.notifications = []; });
+    });
   }
 
   relTime(iso: string): string {

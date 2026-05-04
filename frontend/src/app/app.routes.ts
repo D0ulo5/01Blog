@@ -60,5 +60,11 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard]
   },
 
-  { path: '**', redirectTo: '/feed' }
+  // 404 route
+    {
+      path: '404',
+      loadComponent: () => import('./components/not-found/not-found.component').then(m => m.NotFoundComponent)
+    },
+
+  { path: '**', redirectTo: '/404' }
 ];

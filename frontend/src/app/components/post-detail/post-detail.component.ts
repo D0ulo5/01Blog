@@ -2,17 +2,19 @@ import { Component, inject, OnInit, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PostService } from '../../services/post.service';
 import { CommentService } from '../../services/comment.service';
 import { AuthService } from '../../services/auth.service';
 import { PostDTO, CommentDTO } from '../../models';
 import { MediaPlayerComponent } from '../media-player/media-player.component';
 import { ReportModalComponent } from '../report-modal/report-modal.component';
+import { CrtDialogService } from '../../services/crt-dialog.service';
 
 @Component({
   selector: 'app-post-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, MediaPlayerComponent, ReportModalComponent],
+  imports: [CommonModule, RouterLink, FormsModule, MatTooltipModule, MediaPlayerComponent, ReportModalComponent],
   template: `
     <div class="narrow animate-in">
 
@@ -46,8 +48,8 @@ import { ReportModalComponent } from '../report-modal/report-modal.component';
             }
             <div class="post-actions">
               @if (isOwner()) {
-                <span [routerLink]="['/posts', post.id, 'edit']" class="btn btn-sm">EDIT</span>
-                <button class="btn btn-sm btn-danger" (click)="deletePost()">DELETE</button>
+                <span [routerLink]="['/posts', post.id, 'edit']" class="btn btn-sm" matTooltip="Edit post" matTooltipPosition="above">EDIT</span>
+                <button class="btn btn-sm btn-danger" (click)="deletePost()" matTooltip="Delete post" matTooltipPosition="above">DELETE</button>
               } @else {
                 <button class="btn btn-xs btn-warn" (click)="showReport = true">REPORT</button>
               }
@@ -122,8 +124,8 @@ import { ReportModalComponent } from '../report-modal/report-modal.component';
                     <span class="comment-dot"></span>
                     <span class="comment-time">{{ relTime(c.createdAt) }}</span>
                     <div class="comment-actions">
-                      @if (canEdit(c))   { <button class="btn btn-xs" (click)="startEdit(c)">EDIT</button> }
-                      @if (canDelete(c)) { <button class="btn btn-xs btn-danger" (click)="deleteComment(c.id)">DELETE</button> }
+                      @if (canEdit(c))   { <button class="btn btn-xs" (click)="startEdit(c)" matTooltip="Edit comment" matTooltipPosition="above">EDIT</button> }
+                      @if (canDelete(c)) { <button class="btn btn-xs btn-danger" (click)="deleteComment(c.id)" matTooltip="Delete comment" matTooltipPosition="above">DELETE</button> }
                     </div>
                   </div>
 
@@ -442,6 +444,7 @@ export class PostDetailComponent implements OnInit {
   private postSvc    = inject(PostService);
   private commentSvc = inject(CommentService);
   private auth       = inject(AuthService);
+  private dialog     = inject(CrtDialogService);
 
   post:     PostDTO | null = null;
   comments: CommentDTO[]  = [];
@@ -520,8 +523,11 @@ export class PostDetailComponent implements OnInit {
   }
 
   deletePost() {
-    if (!this.post || !confirm('PERMANENTLY DELETE THIS TRANSMISSION?')) return;
-    this.postSvc.deletePost(this.post.id).subscribe({ next: () => this.router.navigate(['/explore']) });
+    if (!this.post) return;
+    this.dialog.confirm('PERMANENTLY DELETE THIS TRANSMISSION?', 'DELETE', 'CANCEL').subscribe(ok => {
+      if (!ok || !this.post) return;
+      this.postSvc.deletePost(this.post.id).subscribe({ next: () => this.router.navigate(['/explore']) });
+    });
   }
 
   fmtDate(iso: string) {
